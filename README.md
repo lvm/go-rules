@@ -7,7 +7,7 @@ A lightweight and extensible rules engine for Go, designed to support conditiona
 
 - **Custom Conditions:** Define your own conditions for evaluating rules.
 - **Flexible Actions:** Execute actions when conditions are met.
-- **Execution Modes:** Supports `FirstMatch`, `AllMatch`, `AnyMatch`, and `NoneMatch` execution strategies.
+- **Execution Modes:** Supports `AllMatch`, `AnyMatch`, and `NoneMatch` execution strategies.
 - **Rule Prioritization:** Rules are executed based on their priority.
 - **Extensible Registry:** Centralized registration of conditions and actions.
 
@@ -82,7 +82,7 @@ go get github.com/lvm/go-rules
 Example with different execution modes:
 
 ```go
-ruleEngine := NewRuleEngine(FirstMatch, func(msg string) {
+ruleEngine := NewRuleEngine(AllMatch, func(msg string) {
     fmt.Println("Log:", msg)
 }, registry, context.TODO())
 ```
