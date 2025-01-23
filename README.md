@@ -35,12 +35,12 @@ go get github.com/lvm/go-rules
    Define conditions and actions to be used in rules.
 
    ```go
-   isEven := func(args Arguments) bool {
+   isEven := func(c context.Context, args Arguments) bool {
        n, _ := args["number"].(int)
        return n%2 == 0
    }
 
-   printSuccess := func(args Arguments) error {
+   printSuccess := func(c context.Context, args Arguments) error {
        fmt.Println("number is even!")
        return nil
    }
@@ -92,8 +92,8 @@ NewRuleEngine(context.TODO(), NoneMatch, func(msg string) {})
 Combine multiple conditions using `All`, `Any`, or `None`.
 
 ```go
-isEven := func(args Arguments) bool { return args["number"].(int)%2 == 0 }
-isPositive := func(args Arguments) bool { return args["number"].(int) > 0 }
+isEven := func(c context.Context, args Arguments) bool { return args["number"].(int)%2 == 0 }
+isPositive := func(c context.Context, args Arguments) bool { return args["number"].(int) > 0 }
 
 allConditions := All(isEven, isPositive)
 anyConditions := Any(isEven, isPositive)
