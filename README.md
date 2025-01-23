@@ -26,9 +26,9 @@ go get github.com/lvm/go-rules
    The rule engine holds the conditions and actions that the rules engine will use.
 
    ```go
-   ruleEngine := NewRuleEngine(AllMatch, func(msg string) {
+   ruleEngine := NewRuleEngine(context.TODO(), AllMatch, func(msg string) {
        fmt.Println("Log:", msg)
-   }, context.TODO())
+   })
    ```
 
 2. **Create Conditions and Actions**  
@@ -80,11 +80,11 @@ go get github.com/lvm/go-rules
 Example with different execution modes:
 
 ```go
-NewRuleEngine(AllMatch, func(msg string) {}, context.TODO())
+NewRuleEngine(context.TODO(), AllMatch, func(msg string) {})
 
-NewRuleEngine(AnyMatch, func(msg string) {}, context.TODO())
+NewRuleEngine(context.TODO(), AnyMatch, func(msg string) {})
 
-NewRuleEngine(NoneMatch, func(msg string) {}, context.TODO())
+NewRuleEngine(context.TODO(), NoneMatch, func(msg string) {})
 ```
 
 ### Combining Conditions
@@ -113,7 +113,7 @@ The rules engine allows you to store and retrieve values from the context, enabl
 
 
 ```go
-ruleEngine := NewRuleEngine(context.TODO(), AllMatch, logger)
+ruleEngine := NewRuleEngine(context.TODO(), AllMatch, func(msg string) {})
 
 isEvenCondition := Condition{
     Name: "isEven",
