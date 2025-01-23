@@ -15,20 +15,18 @@ const (
 )
 
 type RuleEngine struct {
-	Rules         []*Rule         `json:"rules"`
-	Context       context.Context `json:"context"`
-	ExecutionMode ExecutionMode   `json:"execution_mode"`
+	Rules         []*Rule
+	Context       context.Context
+	ExecutionMode ExecutionMode
 	logger        func(string)
-	registry      *Registry
 }
 
-func NewRuleEngine(mode ExecutionMode, logger func(string), registry *Registry, ctx context.Context) *RuleEngine {
+func NewRuleEngine(ctx context.Context, mode ExecutionMode, logger func(string)) *RuleEngine {
 	return &RuleEngine{
 		Rules:         []*Rule{},
 		Context:       ctx,
 		ExecutionMode: mode,
 		logger:        logger,
-		registry:      registry,
 	}
 }
 
@@ -40,8 +38,8 @@ func (re *RuleEngine) GetContext(key string) interface{} {
 	return re.Context.Value(key)
 }
 
-func (re *RuleEngine) AddRule(rule *Rule) {
-	re.Rules = append(re.Rules, rule)
+func (re *RuleEngine) AddRules(rules ...*Rule) {
+	re.Rules = append(re.Rules, rules...)
 }
 
 func (re *RuleEngine) Execute(args Arguments) error {
@@ -52,44 +50,36 @@ func (re *RuleEngine) Execute(args Arguments) error {
 	switch re.ExecutionMode {
 	case AllMatch:
 		for _, rule := range re.Rules {
-			if rule.Action != "" {
-				if err := rule.Do(re.registry, args); err != nil {
-					re.logger(fmt.Sprintf("Rule failed: %v", err))
-					return err
-				}
+			if err := rule.Do(re.Context, args); err != nil {
+				re.logger(fmt.Sprintf("Rule failed: %v", err))
+				return err
 			}
 		}
 
 	case AnyMatch:
 		for _, rule := range re.Rules {
-			if rule.Action != "" {
-				if err := rule.Do(re.registry, args); err != nil {
-					re.logger(fmt.Sprintf("Rule failed: %v", err))
-				}
+			if err := rule.Do(re.Context, args); err == nil {
+				re.logger("Rule matched successfully")
+				return nil
 			}
 		}
+		re.logger("No rules matched")
+		return fmt.Errorf("no rules matched")
 
 	case NoneMatch:
-		failed := true
 		for _, rule := range re.Rules {
-			if err := rule.Do(re.registry, args); err == nil {
-				failed = false
+			if err := rule.Do(re.Context, args); err == nil {
 				re.logger(fmt.Sprintf("Rule matched unexpectedly: %v", rule))
+				return fmt.Errorf("unexpected rule match")
 			}
 		}
 
-		if failed {
-			for _, rule := range re.Rules {
-				if rule.Action != "" {
-					if err := rule.Do(re.registry, args); err != nil {
-						re.logger(fmt.Sprintf("Error executing action: %v", err))
-					}
-				}
+		re.logger("No rules matched, executing all actions")
+		for _, rule := range re.Rules {
+			if err := rule.Do(re.Context, args); err != nil {
+				re.logger(fmt.Sprintf("Error executing action: %v", err))
 			}
-			return nil
 		}
-
-		return fmt.Errorf("unexpected success, some rules matched")
 	}
 
 	return nil

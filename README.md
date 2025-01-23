@@ -1,4 +1,3 @@
-
 # Go Rules Engine
 
 A lightweight and extensible rules engine for Go, designed to support conditional execution of actions based on user-defined rules.
@@ -23,55 +22,54 @@ go get github.com/lvm/go-rules
 
 ### Basic Setup
 
-1. **Initialize the Registry**  
-   The registry holds the conditions and actions that the rules engine will use.
-
-   ```go
-   registry := NewRegistry()
-   ```
-
-2. **Register Conditions and Actions**  
-   Define conditions and actions to be used in rules.
-
-   ```go
-   registry.AddCondition("isEven", func(args Arguments) bool {
-       n, _ := args["number"].(int)
-       return n%2 == 0
-   })
-
-   registry.AddAction("printSuccess", func(args Arguments) error {
-       fmt.Println("number is even!")
-       return nil
-   })
-   ```
-
-3. **Create Rules**  
-   Define rules with conditions, arguments, and actions.
-
-   ```go
-   rule := When("isEven", Arguments{"number": 4}, 1)
-   rule.Action = "printSuccess"
-   ```
-
-4. **Initialize the Rule Engine**  
-   Set the execution mode and context for the engine.
+1. **Initialize the Rule Engine**  
+   The rule engine holds the conditions and actions that the rules engine will use.
 
    ```go
    ruleEngine := NewRuleEngine(AllMatch, func(msg string) {
        fmt.Println("Log:", msg)
-   }, registry, context.TODO())
+   }, context.TODO())
    ```
 
-5. **Add Rules and Execute**  
+2. **Create Conditions and Actions**  
+   Define conditions and actions to be used in rules.
+
+   ```go
+   isEven := func(args Arguments) bool {
+       n, _ := args["number"].(int)
+       return n%2 == 0
+   }
+
+   printSuccess := func(args Arguments) error {
+       fmt.Println("number is even!")
+       return nil
+   }
+
+   rule := NewRule(Condition{Name: "isEven", Fn: isEven}, Action{Name: "printSuccess", Fn: printSuccess}, 1)
+   ```
+
+3. **Add Rules and Execute**  
    Add rules to the engine and execute them.
 
    ```go
-   ruleEngine.AddRule(rule)
+   ruleEngine.AddRules(rule)
 
    if err := ruleEngine.Execute(Arguments{"number": 4}); err != nil {
        fmt.Println("Execution failed:", err)
    }
    ```
+
+4. **Managing Rule Engines**
+
+    Use the `Registry` to manage multiple rule engines.
+
+    ```go
+    registry := NewRegistry()
+    registry.AddEngine("default", *ruleEngine)
+
+    defaultEngine := registry.GetEngine("default")
+    ```
+
 
 ### Execution Modes
 
@@ -82,9 +80,11 @@ go get github.com/lvm/go-rules
 Example with different execution modes:
 
 ```go
-ruleEngine := NewRuleEngine(AllMatch, func(msg string) {
-    fmt.Println("Log:", msg)
-}, registry, context.TODO())
+NewRuleEngine(AllMatch, func(msg string) {}, context.TODO())
+
+NewRuleEngine(AnyMatch, func(msg string) {}, context.TODO())
+
+NewRuleEngine(NoneMatch, func(msg string) {}, context.TODO())
 ```
 
 ### Combining Conditions
@@ -95,8 +95,57 @@ Combine multiple conditions using `All`, `Any`, or `None`.
 isEven := func(args Arguments) bool { return args["number"].(int)%2 == 0 }
 isPositive := func(args Arguments) bool { return args["number"].(int) > 0 }
 
-registry.AddCondition("isEvenAndPositive", All(isEven, isPositive))
+allConditions := All(isEven, isPositive)
+anyConditions := Any(isEven, isPositive)
+nonConditions := None(isEven, isPositive)
 ```
+
+
+### Context Management in Rules
+
+The rules engine allows you to store and retrieve values from the context, enabling dynamic behavior based on the context during rule evaluation.
+
+1. **Setting and Getting Context Values**  
+   You can store context values using `SetContext` and retrieve them with `GetContext`. This is useful for passing additional data that might influence rule execution.
+
+2. **Using Context in Conditions and Actions**  
+   Rules can use context values to modify their behavior. For instance, a condition might check if a specific context value exists and decide whether to execute an action or skip the rule entirely.
+
+
+```go
+ruleEngine := NewRuleEngine(context.TODO(), AllMatch, logger)
+
+isEvenCondition := Condition{
+    Name: "isEven",
+    Fn: func(c context.Context, args Arguments) bool {
+        if c.Value("ForcePass") != nil {
+            return true
+        }
+
+        n, _ := args["number"].(int)
+        return n%2 == 0
+    },
+}
+
+printAction := Action{
+    Name: "printSuccess",
+    Fn: func(c context.Context, args Arguments) error {
+        n, _ := args["number"].(int)
+        fmt.Printf("Success: %d is even!\n", n)
+        return nil
+    },
+}
+
+rule := NewRule(isEvenCondition, printAction, 1)
+
+ruleEngine.AddRules(rule)
+
+ruleEngine.Execute(Arguments{"number": 4}) // this should pass: 4 is even.
+
+ruleEngine.SetContext("ForcePass", 1)
+ruleEngine.Execute(Arguments{"number": 5}) // this too should pass: even though 5 is odd, ForcePass is not nil
+```
+
 
 ### Example: Middleware with Gin
 
