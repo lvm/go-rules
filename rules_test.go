@@ -6,161 +6,121 @@ import (
 	"testing"
 )
 
-func TestAllOp(t *testing.T) {
-	fn1 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	fn2 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	allOp := Combine(AllOp, true, fn1, fn2)
+func TestOps(t *testing.T) {
+	ctx := context.TODO()
+	args := Arguments{}
+	truthy := func(c context.Context, args Arguments) bool { return true }
+	truthy2 := func(c context.Context, args Arguments) bool { return true }
+	falsy := func(c context.Context, args Arguments) bool { return false }
 
-	if !allOp.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected combined condition to return true, but got false")
-	}
+	t.Run("Combine All", func(t *testing.T) {
+		allOp := Combine(AllOp, true, truthy, truthy2)
+		if !allOp(ctx, args) {
+			t.Errorf("Expected combined condition to return true, but got false")
+		}
 
-	fn3 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	allOp = Combine(AllOp, true, fn1, fn3)
+		allOp = Combine(AllOp, true, truthy, falsy)
+		if allOp(ctx, args) {
+			t.Errorf("Expected combined condition to return false, but got true")
+		}
+	})
 
-	if allOp.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected combined condition to return false, but got true")
-	}
+	t.Run("Combine Any", func(t *testing.T) {
+		anyOp := Combine(AnyOp, false, truthy, truthy2)
+		if !anyOp(ctx, args) {
+			t.Errorf("Expected combined condition to return true, but got false")
+		}
+
+		anyOp = Combine(AnyOp, false, truthy, falsy)
+		if !anyOp(ctx, args) {
+			t.Errorf("Expected combined condition to return false, but got true")
+		}
+	})
+
+	t.Run("Combine None", func(t *testing.T) {
+		nonOp := Combine(NoneOp, true, truthy, truthy2)
+
+		if nonOp(ctx, args) {
+			t.Errorf("Expected combined condition to return false, but got true")
+		}
+
+		truthy3 := func(c context.Context, args Arguments) bool { return true }
+		nonOp = Combine(NoneOp, true, truthy, truthy2, truthy3)
+		if nonOp(ctx, args) {
+			t.Errorf("Expected combined condition to return false, but got true")
+		}
+	})
 }
 
-func TestAnyOp(t *testing.T) {
-	fn1 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	fn2 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	anyOp := Combine(AnyOp, false, fn1, fn2)
+func TestCombinations(t *testing.T) {
+	ctx := context.TODO()
+	args := Arguments{}
+	truthy := func(c context.Context, args Arguments) bool { return true }
+	truthy2 := func(c context.Context, args Arguments) bool { return true }
+	falsy := func(c context.Context, args Arguments) bool { return false }
 
-	if !anyOp.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected combined condition to return true, but got false")
-	}
+	t.Run("All", func(t *testing.T) {
+		allCond := All(truthy, truthy2)
+		if !allCond(ctx, args) {
+			t.Errorf("Expected All conditions to return true, but got false")
+		}
 
-	fn3 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	anyOp = Combine(AnyOp, false, fn1, fn3)
+		allCond = All(truthy, falsy)
+		if allCond(ctx, args) {
+			t.Errorf("Expected All conditions to return false, but got true")
+		}
+	})
 
-	if anyOp.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected combined condition to return false, but got true")
-	}
-}
+	t.Run("Any", func(t *testing.T) {
+		anyCond := Any(truthy, truthy2)
+		if !anyCond(ctx, args) {
+			t.Errorf("Expected Any conditions to return true, but got false")
+		}
 
-func TestNoneOp(t *testing.T) {
-	fn1 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	fn2 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	nonOp := Combine(NoneOp, true, fn1, fn2)
+		falsy2 := func(c context.Context, args Arguments) bool { return false }
+		anyCond = Any(falsy, falsy2)
+		if anyCond(ctx, args) {
+			t.Errorf("Expected Any conditions to return false, but got true")
+		}
+	})
 
-	if nonOp.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected combined condition to return false, but got true")
-	}
+	t.Run("None", func(t *testing.T) {
+		noneCond := None(truthy, truthy2)
+		if noneCond(ctx, args) {
+			t.Errorf("Expected None conditions to return true, but got false")
+		}
 
-	fn3 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	nonOp = Combine(NoneOp, true, fn1, fn3)
-
-	if nonOp.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected combined condition to return false, but got true")
-	}
-}
-
-func TestAll(t *testing.T) {
-	fn1 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	fn2 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-
-	allCond := All(fn1, fn2)
-
-	if !allCond.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected All conditions to return true, but got false")
-	}
-
-	fn3 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	allCond = All(fn1, fn3)
-
-	if allCond.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected All conditions to return false, but got true")
-	}
-}
-
-func TestAny(t *testing.T) {
-	fn1 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	fn2 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-
-	anyCond := Any(fn1, fn2)
-
-	if !anyCond.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected Any conditions to return true, but got false")
-	}
-
-	fn3 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	anyCond = Any(fn1, fn3)
-
-	if anyCond.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected Any conditions to return false, but got true")
-	}
-}
-
-func TestNone(t *testing.T) {
-	fn1 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-	fn2 := Condition{Name: "falseFn", Fn: func(c context.Context, args Arguments) bool { return false }}
-
-	noneCond := None(fn1, fn2)
-
-	if !noneCond.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected None conditions to return true, but got false")
-	}
-
-	fn3 := Condition{Name: "trueFn", Fn: func(c context.Context, args Arguments) bool { return true }}
-	noneCond = None(fn1, fn3)
-
-	if noneCond.Fn(context.TODO(), Arguments{}) {
-		t.Errorf("Expected None conditions to return false, but got true")
-	}
+		noneCond = None(truthy, falsy)
+		if noneCond(ctx, args) {
+			t.Errorf("Expected None conditions to return false, but got true")
+		}
+	})
 }
 
 func TestRuleDo(t *testing.T) {
-
-	condIsEven := Condition{Name: "isEven", Fn: func(c context.Context, args Arguments) bool {
+	isEven := func(c context.Context, args Arguments) bool {
 		n, _ := args["number"].(int)
 		return n%2 == 0
-	}}
-	aktPrintIsEven := Action{Name: "printIsEven", Fn: func(c context.Context, args Arguments) error {
+	}
+	printIsEven := func(c context.Context, args Arguments) error {
 		n, ok := args["number"].(int)
 		if !ok {
 			return fmt.Errorf("%+v is not a number", args["number"])
 		}
 		fmt.Printf("Success: %d is even!\n", n)
 		return nil
-	}}
+	}
 
-	t.Run("Valid Condition and Action", func(t *testing.T) {
+	t.Run("Rule.Do()", func(t *testing.T) {
 		rule := NewRule(
-			condIsEven,
-			aktPrintIsEven,
+			isEven,
+			printIsEven,
 			1,
 		)
 
 		err := rule.Do(context.TODO(), Arguments{"number": 4})
 		if err != nil {
 			t.Errorf("Expected no error, but got: %v", err)
-		}
-	})
-
-	t.Run("Valid Condition and Missing Action", func(t *testing.T) {
-		rule := NewRule(
-			condIsEven,
-			Action{Name: "fail"},
-			1,
-		)
-
-		err := rule.Do(context.TODO(), Arguments{"number": 4})
-		if err == nil {
-			t.Errorf("Expected err, but got: %v", err)
-		}
-	})
-	t.Run("Missing Condition and Valid Action", func(t *testing.T) {
-		rule := NewRule(
-			Condition{Name: "fail"},
-			aktPrintIsEven,
-			1,
-		)
-
-		err := rule.Do(context.TODO(), Arguments{"number": 4})
-		if err == nil {
-			t.Errorf("Expected err, but got: %v", err)
 		}
 	})
 

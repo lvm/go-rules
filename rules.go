@@ -8,15 +8,9 @@ import (
 type (
 	Arguments map[string]interface{}
 
-	Condition struct {
-		Name string
-		Fn   func(ctx context.Context, args Arguments) bool
-	}
+	Condition func(ctx context.Context, args Arguments) bool
 
-	Action struct {
-		Name string
-		Fn   func(ctx context.Context, args Arguments) error
-	}
+	Action func(ctx context.Context, args Arguments) error
 
 	Operator func(a, b bool) bool
 
@@ -28,15 +22,12 @@ type (
 )
 
 func Combine(operator Operator, initial bool, conditions ...Condition) Condition {
-	return Condition{
-		Name: "Combined",
-		Fn: func(ctx context.Context, args Arguments) bool {
-			result := initial
-			for _, condition := range conditions {
-				result = operator(result, condition.Fn(ctx, args))
-			}
-			return result
-		},
+	return func(ctx context.Context, args Arguments) bool {
+		result := initial
+		for _, condition := range conditions {
+			result = operator(result, condition(ctx, args))
+		}
+		return result
 	}
 }
 
@@ -69,16 +60,16 @@ func NewRule(condition Condition, action Action, priority int) *Rule {
 }
 
 func (r *Rule) Do(ctx context.Context, args Arguments) error {
-	if r.Condition.Fn == nil {
+	if r.Condition == nil {
 		return fmt.Errorf("missing Condition")
 	}
 
-	if !r.Condition.Fn(ctx, args) {
-		return fmt.Errorf("condition '%s' not met", r.Condition.Name)
+	if !r.Condition(ctx, args) {
+		return fmt.Errorf("condition was not met")
 	}
 
-	if r.Action.Fn != nil {
-		return r.Action.Fn(ctx, args)
+	if r.Action != nil {
+		return r.Action(ctx, args)
 	}
 
 	return fmt.Errorf("missing Action")

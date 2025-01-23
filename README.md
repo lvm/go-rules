@@ -45,7 +45,7 @@ go get github.com/lvm/go-rules
        return nil
    }
 
-   rule := NewRule(Condition{Name: "isEven", Fn: isEven}, Action{Name: "printSuccess", Fn: printSuccess}, 1)
+   rule := NewRule(isEven, printSuccess, 1)
    ```
 
 3. **Add Rules and Execute**  
@@ -115,25 +115,19 @@ The rules engine allows you to store and retrieve values from the context, enabl
 ```go
 ruleEngine := NewRuleEngine(context.TODO(), AllMatch, func(msg string) {})
 
-isEvenCondition := Condition{
-    Name: "isEven",
-    Fn: func(c context.Context, args Arguments) bool {
-        if c.Value("ForcePass") != nil {
-            return true
-        }
+isEvenCondition := func(c context.Context, args Arguments) bool {
+    if c.Value("ForcePass") != nil {
+        return true
+    }
 
-        n, _ := args["number"].(int)
-        return n%2 == 0
-    },
+    n, _ := args["number"].(int)
+    return n%2 == 0
 }
 
-printAction := Action{
-    Name: "printSuccess",
-    Fn: func(c context.Context, args Arguments) error {
-        n, _ := args["number"].(int)
-        fmt.Printf("Success: %d is even!\n", n)
-        return nil
-    },
+printAction := func(c context.Context, args Arguments) error {
+    n, _ := args["number"].(int)
+    fmt.Printf("Success: %d is even!\n", n)
+    return nil
 }
 
 rule := NewRule(isEvenCondition, printAction, 1)
